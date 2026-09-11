@@ -13,6 +13,13 @@ const TARGET_MAX_EDGE = 1568; // px — longest edge sent to the vision model
 const TARGET_JPEG_QUALITY = 0.85;
 const REQUEST_TIMEOUT_MS = 45_000;
 
+/**
+ * Base URL for the AMMA API. Defaults to same-origin (""), which is correct for
+ * the standard Vercel deployment where the frontend and /api/* are served
+ * together. Set VITE_AMMA_API_BASE only if the API is hosted on another origin.
+ */
+const API_BASE = (import.meta.env.VITE_AMMA_API_BASE ?? "").replace(/\/$/, "");
+
 export type AmmaSubmitMode = "text" | "image";
 
 export interface AmmaSubmission {
@@ -83,9 +90,12 @@ export function validateImageFile(file: File): string | null {
  */
 export async function fileToDownscaledDataUrl(file: File): Promise<string> {
   const first = await encodeFileToJpegDataUrl(file, TARGET_MAX_EDGE, TARGET_JPEG_QUALITY);
-  if (first.length <= 4_000_000) return first; // well under the server cap
+  // Data-URL chars ≈ bytes; JSON-escaping inflates ~5%. Stay well under Vercel's
+  // 4.5 MB request-body limit — over-limit bodies are rejected BEFORE the
+  // function runs (no logs, non-JSON error), which looks like a mystery failure.
+  if (first.length <= 3_000_000) return first;
   const second = await encodeFileToJpegDataUrl(file, 1024, 0.6);
-  if (second.length > 5_500_000) {
+  if (second.length > 4_000_000) {
     const err: AmmaSubmitError = {
       code: "IMAGE_TOO_LARGE",
       message: ammaErrorFromCode("IMAGE_TOO_LARGE"),
@@ -185,10 +195,25 @@ export async function submitToAmma(
             image: await fileToDownscaledDataUrl(file!),
             text: text?.trim() || undefined,
           };
-  } catch {
+  } catch (prepErr) {
+    console.error("[AMMA] submission prep failed:", prepErr);
     const err: AmmaSubmitError = {
       code: "INVALID_IMAGE",
       message: ammaErrorFromCode("INVALID_IMAGE"),
+    };
+    throw err;
+  }
+
+  const url = `${API_BASE}/api/amma`;
+  const payloadChars = JSON.stringify(payload).length;
+  console.info(
+    `[AMMA] POST ${url} mode=${mode} payloadChars=${payloadChars}`,
+  );
+  if (payloadChars > 4_300_000) {
+    // Guard: refuse to send a body the platform will reject pre-invocation.
+    const err: AmmaSubmitError = {
+      code: "IMAGE_TOO_LARGE",
+      message: "That image is still too heavy after compression. Try a smaller photo.",
     };
     throw err;
   }
@@ -198,7 +223,7 @@ export async function submitToAmma(
 
   let response: Response;
   try {
-    response = await fetch("/api/amma", {
+    response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -206,9 +231,9 @@ export async function submitToAmma(
     });
   } catch (fetchErr) {
     if (fetchErr instanceof DOMException && fetchErr.name === "AbortError") {
-      console.error("[AMMA] /api/amma request timed out after", REQUEST_TIMEOUT_MS, "ms");
+      console.error(`[AMMA] POST ${url} timed out after`, REQUEST_TIMEOUT_MS, "ms");
     } else {
-      console.error("[AMMA] /api/amma network failure:", fetchErr);
+      console.error(`[AMMA] POST ${url} network failure:`, fetchErr);
     }
     const err: AmmaSubmitError = {
       code: "NETWORK_ERROR",
@@ -231,7 +256,12 @@ export async function submitToAmma(
   }
 
   if (!response.ok) {
-    console.error("[AMMA] /api/amma HTTP", response.status, "body:", rawText.slice(0, 300));
+    // Full diagnostics: status, content type, and body snippet — so the real
+    // server/platform error is visible in the browser console, not swallowed.
+    console.error(
+      `[AMMA] POST ${url} → HTTP ${response.status} ${response.statusText} | content-type: ${response.headers.get("content-type") ?? "none"} | body:`,
+      rawText.slice(0, 400),
+    );
     let code: AmmaSubmitErrorCode = "SERVER_ERROR";
     if (response.status === 429) code = "RATE_LIMIT";
     else if (response.status === 404 || data === null) code = "ENDPOINT_MISSING";
@@ -240,7 +270,13 @@ export async function submitToAmma(
     }
     const err: AmmaSubmitError = {
       code,
-      message: data?.error ?? ammaErrorFromCode(code),
+      // Prefer the actual server error message; only fall back to the canned
+      // text when the response carried no usable error (non-JSON bodies).
+      message:
+        data?.error ??
+        (code === "ENDPOINT_MISSING"
+          ? `AMMA OS cannot reach the judgment engine (HTTP ${response.status}, non-JSON response). If this persists, redeploy and try again.`
+          : ammaErrorFromCode(code)),
     };
     throw err;
   }
