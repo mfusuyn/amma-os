@@ -179,7 +179,7 @@ async function run() {
       body: res.body,
     });
     const sent = JSON.parse(String(calls[0]?.init?.body ?? "{}")) as { model: string; messages: Array<{ role: string }>; response_format?: { type: string } };
-    check("text uses llama-3.3-70b-versatile", sent.model === "llama-3.3-70b-versatile", sent.model);
+    check("text uses openai/gpt-oss-120b", sent.model === "openai/gpt-oss-120b", sent.model);
     check("text request has system + user roles", sent.messages?.[0]?.role === "system" && sent.messages?.[1]?.role === "user", sent.messages?.map((m) => m.role));
     check("text request uses json_object mode", sent.response_format?.type === "json_object", sent.response_format);
     check("groq URL is chat/completions", calls[0]?.url.includes("api.groq.com/openai/v1/chat/completions") === true, calls[0]?.url);
@@ -193,10 +193,10 @@ async function run() {
       body: res.body,
     });
     const sent = JSON.parse(String(calls[0]?.init?.body ?? "{}")) as { model: string; messages: Array<{ role: string; content: unknown }>; response_format?: { type: string } };
-    check("image uses vision model", sent.model === "meta-llama/llama-4-scout-17b-16e-instruct", sent.model);
+    check("image uses vision model", sent.model === "qwen/qwen3.6-27b", sent.model);
     const userContent = sent.messages?.[1]?.content as Array<{ type: string }>;
     check("image message is multimodal", Array.isArray(userContent) && userContent.some((p) => p.type === "image_url") && userContent.some((p) => p.type === "text"), userContent?.map((p) => p.type));
-    check("vision request omits json_object mode", sent.response_format === undefined, sent.response_format);
+    check("vision request uses json_object mode", sent.response_format?.type === "json_object", sent.response_format);
   }
 
   console.log("\n— Output normalization —");

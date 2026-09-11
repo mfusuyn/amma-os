@@ -13,8 +13,8 @@ export const config = {
 };
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const TEXT_MODEL = "llama-3.3-70b-versatile";
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const TEXT_MODEL = "openai/gpt-oss-120b";
+const VISION_MODEL = "qwen/qwen3.6-27b";
 
 const MAX_TEXT_LENGTH = 4000;
 const MAX_BASE64_LENGTH = 6_000_000; // ~4.5 MB binary after decoding
@@ -227,7 +227,7 @@ function groqErrorMapping(reason: string): { status: number; error: string } {
 }
 
 async function callGroq(apiKey: string, model: string, messages: Array<Record<string, unknown>>, jsonMode: boolean): Promise<string> {
-  const requestBody: Record<string, unknown> = { model, messages, temperature: 0.9, max_tokens: 1024 };
+  const requestBody: Record<string, unknown> = { model, messages, temperature: 0.9, max_completion_tokens: 2048 };
   if (jsonMode) requestBody.response_format = { type: "json_object" };
 
   let response: Response;
@@ -333,7 +333,8 @@ export default async function handler(
       }
       log("info", "req.image_parsed", { mimeType: parsed.mimeType, bytes: parsed.base64.length });
       model = VISION_MODEL;
-      jsonMode = false;
+      // qwen3.6-27b supports JSON mode with image input — keep output strictly structured.
+      jsonMode = true;
       messages = [
         { role: "system", content: SYSTEM_PROMPT },
         {
