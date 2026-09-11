@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, LogOut } from "lucide-react";
+import { Home } from "lucide-react";
 import { useNavigate } from "react-router";
 
 export default function Dashboard() {
