@@ -340,10 +340,12 @@ export default function Landing() {
     try {
       const result = await submitToAmma(submission);
       setJudgment(result);
+      // Hold the final loading stage briefly so the sequence completes on screen.
+      await new Promise((r) => setTimeout(r, 600));
       setView("result");
     } catch (err) {
       const ammaErr = err as AmmaSubmitError;
-      toast.error(ammaErr?.message ?? ammaErrorFromCode("SERVER_ERROR"));
+      toast.error(ammaErr?.message ?? ammaErrorFromCode("SERVER_ERROR"), { duration: 7000 });
       setView("input");
     } finally {
       setIsSubmitting(false);

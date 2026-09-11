@@ -17,10 +17,10 @@ export function AmmaLoading() {
   const [stageIndex, setStageIndex] = useState(0);
 
   useEffect(() => {
-    // Advance one stage every ~1.4s; last stage stays until results arrive.
+    // Advance one stage every ~1.1s; last stage holds until results arrive.
     const timer = setInterval(() => {
       setStageIndex((i) => Math.min(i + 1, STAGES.length - 1));
-    }, 1400);
+    }, 1100);
     return () => clearInterval(timer);
   }, []);
 

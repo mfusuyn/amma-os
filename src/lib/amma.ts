@@ -28,6 +28,7 @@ export type AmmaSubmitErrorCode =
   | "IMAGE_TOO_LARGE"
   | "SERVER_NOT_CONFIGURED"
   | "SERVER_ERROR"
+  | "ENDPOINT_MISSING"
   | "MALFORMED_RESPONSE"
   | "RATE_LIMIT"
   | "NETWORK_ERROR";
@@ -48,6 +49,8 @@ export function ammaErrorFromCode(code: AmmaSubmitErrorCode): string {
       return "AMMA OS is offline: the judgment engine is not configured on the server.";
     case "SERVER_ERROR":
       return "AMMA OS hit an error while judging. Try again.";
+    case "ENDPOINT_MISSING":
+      return "AMMA OS cannot reach the judgment engine. The API endpoint is not deployed — redeploy and try again.";
     case "MALFORMED_RESPONSE":
       return "Amma's response was malformed. Even she is embarrassed. Try again.";
     case "RATE_LIMIT":
@@ -75,10 +78,28 @@ export function validateImageFile(file: File): string | null {
 
 /**
  * Read a File and downscale it to a JPEG data URL via canvas, keeping the
- * longest edge <= TARGET_MAX_EDGE. Falls back to reading the file directly
- * if canvas encoding fails for any reason.
+ * longest edge <= TARGET_MAX_EDGE. If the result is still too heavy for the
+ * serverless body limit, re-encodes once at a smaller size/lower quality.
  */
 export async function fileToDownscaledDataUrl(file: File): Promise<string> {
+  const first = await encodeFileToJpegDataUrl(file, TARGET_MAX_EDGE, TARGET_JPEG_QUALITY);
+  if (first.length <= 4_000_000) return first; // well under the server cap
+  const second = await encodeFileToJpegDataUrl(file, 1024, 0.6);
+  if (second.length > 5_500_000) {
+    const err: AmmaSubmitError = {
+      code: "IMAGE_TOO_LARGE",
+      message: ammaErrorFromCode("IMAGE_TOO_LARGE"),
+    };
+    throw err;
+  }
+  return second;
+}
+
+async function encodeFileToJpegDataUrl(
+  file: File,
+  maxEdge: number,
+  quality: number,
+): Promise<string> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -96,10 +117,7 @@ export async function fileToDownscaledDataUrl(file: File): Promise<string> {
     image.src = dataUrl;
   });
 
-  const scale = Math.min(
-    1,
-    TARGET_MAX_EDGE / Math.max(img.naturalWidth || 1, img.naturalHeight || 1),
-  );
+  const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
   const width = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
   const height = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
 
@@ -129,7 +147,7 @@ export async function fileToDownscaledDataUrl(file: File): Promise<string> {
         blobReader.readAsDataURL(blob);
       },
       "image/jpeg",
-      TARGET_JPEG_QUALITY,
+      quality,
     );
   });
 
@@ -186,7 +204,12 @@ export async function submitToAmma(
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-  } catch {
+  } catch (fetchErr) {
+    if (fetchErr instanceof DOMException && fetchErr.name === "AbortError") {
+      console.error("[AMMA] /api/amma request timed out after", REQUEST_TIMEOUT_MS, "ms");
+    } else {
+      console.error("[AMMA] /api/amma network failure:", fetchErr);
+    }
     const err: AmmaSubmitError = {
       code: "NETWORK_ERROR",
       message: ammaErrorFromCode("NETWORK_ERROR"),
@@ -196,15 +219,23 @@ export async function submitToAmma(
     clearTimeout(timeout);
   }
 
-  const data = (await response.json().catch(() => null)) as {
-    judgment?: AmmaJudgment;
-    error?: string;
-  } | null;
+  // Read as text first: a non-JSON response usually means the endpoint is not
+  // deployed (Vercel returns an HTML 404 page) — worth reporting precisely.
+  const rawText = await response.text().catch(() => "");
+  type AmmaApiResponse = { judgment?: AmmaJudgment; error?: string; code?: string };
+  let data: AmmaApiResponse | null = null;
+  try {
+    data = JSON.parse(rawText) as AmmaApiResponse;
+  } catch {
+    data = null;
+  }
 
   if (!response.ok) {
+    console.error("[AMMA] /api/amma HTTP", response.status, "body:", rawText.slice(0, 300));
     let code: AmmaSubmitErrorCode = "SERVER_ERROR";
     if (response.status === 429) code = "RATE_LIMIT";
-    else if (response.status === 500 && data?.error?.includes("GROQ_API_KEY")) {
+    else if (response.status === 404 || data === null) code = "ENDPOINT_MISSING";
+    else if (data?.code === "SERVER_NOT_CONFIGURED" || data?.error?.includes("GROQ_API_KEY")) {
       code = "SERVER_NOT_CONFIGURED";
     }
     const err: AmmaSubmitError = {
@@ -215,6 +246,21 @@ export async function submitToAmma(
   }
 
   if (!data?.judgment) {
+    console.error("[AMMA] /api/amma returned 200 without a judgment:", rawText.slice(0, 300));
+    const err: AmmaSubmitError = {
+      code: "MALFORMED_RESPONSE",
+      message: ammaErrorFromCode("MALFORMED_RESPONSE"),
+    };
+    throw err;
+  }
+
+  const j = data.judgment;
+  if (
+    typeof j.whatAmmaSees !== "string" ||
+    !Array.isArray(j.analysis) ||
+    (j.verdict !== "APPROVED" && j.verdict !== "REJECTED")
+  ) {
+    console.error("[AMMA] /api/amma judgment failed schema validation:", JSON.stringify(j).slice(0, 300));
     const err: AmmaSubmitError = {
       code: "MALFORMED_RESPONSE",
       message: ammaErrorFromCode("MALFORMED_RESPONSE"),
