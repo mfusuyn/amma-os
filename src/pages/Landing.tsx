@@ -77,7 +77,7 @@ function UploadZone({
           Upload Something
         </p>
         <p className="text-sm text-muted-foreground mt-1">
-          Show Amma what you've done.
+          Show Amma what you&apos;ve done.
         </p>
       </div>
 
@@ -116,7 +116,7 @@ function TextInputArea({
       <textarea
         value={value}
         onChange={onChange}
-        placeholder="Tell Amma what you've done..."
+        placeholder="Tell Amma what you&apos;ve done..."
         disabled={isLoading}
         className={cn(
           "w-full h-32 px-5 py-4 rounded-lg bg-card/50 border border-border/50 backdrop-blur-sm",
