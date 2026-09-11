@@ -42,13 +42,12 @@ function UploadZone({
     onSelect?.();
   };
 
-  return (
-    <motion.div
+  return (      <motion.div
       className={cn(
-        "relative flex flex-col items-center justify-center gap-4 p-12 rounded-xl border-2 border-border/50 bg-card/50 backdrop-blur-sm transition-all cursor-pointer",
-        "group hover:border-primary/30 hover:bg-card/80",
+        "relative flex flex-col items-center justify-center gap-4 p-12 rounded-xl border-2 border-border/40 bg-card/60 backdrop-blur-sm transition-all cursor-pointer",
+        "group hover:border-primary/40 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5",
         "focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-ring/30",
-        isDragging && "border-primary/50 bg-primary/5 scale-[1.01]"
+        isDragging && "border-primary/60 bg-primary/8 scale-[1.01]"
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -64,7 +63,7 @@ function UploadZone({
 
       {/* Upload icon */}
       <motion.div
-        className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center"
+        className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center ring-1 ring-primary/20"
         whileHover={{ scale: 1.1, rotate: 5 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -76,13 +75,13 @@ function UploadZone({
         <p className="text-lg font-medium text-foreground">
           Upload Something
         </p>
-        <p className="text-sm text-muted-foreground mt-1">
-          Show Amma what you&apos;ve done.
+        <p className="text-xs text-muted-foreground/60 mt-3 font-mono tracking-wide">
+          Upload a photo
         </p>
       </div>
 
       {/* Subtle hint text */}
-      <p className="text-xs text-muted-foreground/50 font-mono">
+      <p className="text-xs text-muted-foreground/60 font-mono">
         Drag & drop or click to browse
       </p>
 
@@ -176,19 +175,19 @@ function SuggestionChip({
     <motion.button
       onClick={onClick}
       className={cn(
-        "group relative px-4 py-2 rounded-md border border-border/50 bg-card/30",
-        "text-sm text-muted-foreground hover:text-foreground",
-        "transition-all duration-200",
-        "hover:border-primary/30 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/5",
-        "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/50"
+        "group relative px-4 py-2 rounded-md border border-border/50 bg-card/40 text-muted-foreground",
+        "text-sm transition-all duration-200",
+        "hover:border-primary/40 hover:bg-primary/8 hover:shadow-lg hover:shadow-primary/10 hover:text-foreground",
+        "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
+        "hover:scale-[1.03] hover:-translate-y-0.5"
       )}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
       {/* Decorative line */}
-      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
 
-      {text}
+      <span className="relative z-10">{text}</span>
     </motion.button>
   );
 }
@@ -271,14 +270,16 @@ export default function Landing() {
                 Give Amma anything. A purchase. An outfit. Your marks. Your room.{" "}
                 <span className="text-muted-foreground/80">A questionable decision.</span> Amma will analyze it.
               </p>
+              <p className="text-xs text-muted-foreground/80 mt-3 italic tracking-wide max-w-md mx-auto">
+                She already has an opinion.
+              </p>
             </motion.div>
 
-            {/* Main input card */}
-            <motion.div
+            {/* Main input card */}              <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.2 }}
-              className="bg-card/80 backdrop-blur-md rounded-2xl border border-border/50 shadow-2xl"
+              className="bg-card/85 backdrop-blur-md rounded-2xl border border-border/60 shadow-xl shadow-black/20"
             >
               {/* Card header */}
               <div className="px-8 pt-8 pb-4 border-b border-border/30">
@@ -297,8 +298,8 @@ export default function Landing() {
                       <div className="w-6 h-6 rounded border border-border/50 flex items-center justify-center">
                         <Image className="w-3 h-3 text-muted-foreground/60" />
                       </div>
-                      <span className="text-xs font-mono text-muted-foreground/60 uppercase tracking-wider">
-                        Option 1
+                      <span className="text-xs font-mono text-foreground/80 uppercase tracking-wider">
+                        SHOW AMMA
                       </span>
                     </div>
                     <UploadZone />
@@ -310,8 +311,8 @@ export default function Landing() {
                       <div className="w-6 h-6 rounded border border-border/50 flex items-center justify-center">
                         <Type className="w-3 h-3 text-muted-foreground/60" />
                       </div>
-                      <span className="text-xs font-mono text-muted-foreground/60 uppercase tracking-wider">
-                        Option 2
+                      <span className="text-xs font-mono text-foreground/80 uppercase tracking-wider">
+                        TELL AMMA
                       </span>
                     </div>
                     <TextInputArea
@@ -332,7 +333,7 @@ export default function Landing() {
               transition={{ duration: 0.5, delay: 0.4 }}
               className="mt-12 text-center"
             >
-              <p className="text-xs font-mono text-muted-foreground/50 tracking-widest uppercase mb-4">
+              <p className="text-xs font-mono text-muted-foreground/60 tracking-widest uppercase mb-4">
                 Try Something
               </p>
               <div className="flex flex-wrap justify-center gap-3 stagger-children">
