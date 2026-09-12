@@ -1,5 +1,3 @@
-<img width="1280" height="640" alt="git (1)" src="https://github.com/user-attachments/assets/8920b256-2ba8-4988-b824-5351134eb4bd" />
-
 # ASK AMMA 🎯
 
 > **She already has an opinion.**
@@ -9,7 +7,7 @@
 ### Team Name
 **Idealess**
 
-### Team Members
+### Team Member
 - **Muhammed Yusuf Naushad** — Cape College of Engineering, Alappuzha
 
 ---
@@ -163,16 +161,13 @@ npm run dev
 
 ### Screenshots
 
-![ASK AMMA Landing Page](./screenshots/landing.png)
-
+![ASK AMMA Landing Page](./landing.png)
 *The ASK AMMA interface where users can submit either text or an image for judgment.*
 
-![AMMA Judgment in Progress](./screenshots/judging.png)
-
+![AMMA Judgment in Progress](./judging.png)
 *The judgment sequence as AMMA OS analyzes the submitted decision.*
 
-![AMMA Verdict Report](./screenshots/verdict.png)
-
+![AMMA Verdict Report](./verdict.png)
 *The final verdict report showing Amma's reasoning and APPROVED or REJECTED decision.*
 
 ---
@@ -189,7 +184,7 @@ https://github.com/mfusuyn/amma-os
 
 ### Demo Video
 
-PASTE YOUR DEMO VIDEO LINK HERE
+<!-- TODO: paste your demo video link here -->
 
 ---
 
