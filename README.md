@@ -65,3 +65,15 @@ For Software:
 # Installation
 ```bash
 npm install
+### Project Documentation
+
+# Screenshots
+
+![ASK AMMA Landing Page](YOUR_LANDING_PAGE_IMAGE_URL)
+*The ASK AMMA interface where users can submit either text or an image for judgment.*
+
+![AMMA Judgment in Progress](YOUR_JUDGMENT_IMAGE_URL)
+*The judgment sequence as AMMA OS analyzes the submitted decision.*
+
+![AMMA Verdict Report](YOUR_VERDICT_IMAGE_URL)
+*The final verdict report showing Amma's reasoning and APPROVED or REJECTED decision.*
