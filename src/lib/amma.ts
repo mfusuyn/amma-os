@@ -14,11 +14,26 @@ const TARGET_JPEG_QUALITY = 0.85;
 const REQUEST_TIMEOUT_MS = 45_000;
 
 /**
- * Base URL for the AMMA API. Defaults to same-origin (""), which is correct for
- * the standard Vercel deployment where the frontend and /api/* are served
- * together. Set VITE_AMMA_API_BASE only if the API is hosted on another origin.
+ * API base resolution.
+ *
+ * The deployed API lives on the production Vercel origin. When the frontend is
+ * viewed through the preview harness (a different origin), a relative /api/amma
+ * would 404 before ever reaching Vercel — so judgments are always sent to the
+ * production origin unless overridden. The endpoint allows CORS
+ * (Access-Control-Allow-Origin: *) and handles OPTIONS preflight.
  */
-const API_BASE = (import.meta.env.VITE_AMMA_API_BASE ?? "").replace(/\/$/, "");
+const PRODUCTION_API_ORIGIN = "https://amma-oss.vercel.app";
+
+function resolveApiBase(): string {
+  const fromEnv = import.meta.env.VITE_AMMA_API_BASE?.replace(/\/$/, "");
+  if (fromEnv) return fromEnv; // explicit override wins
+  if (typeof window !== "undefined" && window.location.origin === PRODUCTION_API_ORIGIN) {
+    return ""; // same-origin on production — standard Vercel deployment
+  }
+  return PRODUCTION_API_ORIGIN; // preview/other origin → judge via production
+}
+
+const API_BASE = resolveApiBase();
 
 export type AmmaSubmitMode = "text" | "image";
 
@@ -217,6 +232,9 @@ export async function submitToAmma(
     };
     throw err;
   }
+  // Deep diagnostic: shows the calling context (origin, frame, stack) so any
+  // iframe/proxy interception of this request becomes visible in the console.
+  console.trace(`[AMMA] POST ${url} — caller context`);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -228,6 +246,11 @@ export async function submitToAmma(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: controller.signal,
+      // Bypass any referer/credential-based edge routing or interception:
+      // the API is same-origin and needs neither.
+      referrerPolicy: "no-referrer",
+      credentials: "omit",
+      cache: "no-store",
     });
   } catch (fetchErr) {
     if (fetchErr instanceof DOMException && fetchErr.name === "AbortError") {
