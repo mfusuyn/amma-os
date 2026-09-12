@@ -6,11 +6,101 @@ import {
   Gavel,
   MessageSquareText,
   Scale,
+  Square,
   Users,
+  Volume2,
 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AmmaJudgment } from "@/lib/ammaTypes";
+
+/** Relative-comparison section with a browser-native speak/stop toggle. */
+function RelativeComparisonSection({
+  text,
+  index,
+}: {
+  text: string;
+  index: number;
+}) {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const supported =
+    typeof window !== "undefined" && "speechSynthesis" in window;
+
+  const stop = useCallback(() => {
+    if (!supported) return;
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  }, [supported]);
+
+  const toggle = useCallback(() => {
+    if (!supported) return;
+    if (isSpeaking) {
+      stop();
+      return;
+    }
+    // If something else is queued (e.g. a prior run), clear it first.
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  }, [supported, isSpeaking, stop, text]);
+
+  // Stop speech when navigating away from the report.
+  useEffect(() => stop, [stop]);
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.25 + index * 0.12, duration: 0.45 }}
+      className="relative bg-card/40 border border-border/40 rounded-lg p-5 md:p-6"
+    >
+      <div className="flex items-center gap-2.5 mb-3">
+        <span className="text-primary">
+          <Users className="w-3.5 h-3.5" />
+        </span>
+        <h3 className="text-xs font-mono tracking-widest uppercase text-foreground/85">
+          Relative Comparison
+        </h3>
+        {supported && (
+          <button
+            type="button"
+            aria-label={
+              isSpeaking
+                ? "Stop reading relative comparison"
+                : "Read relative comparison aloud"
+            }
+            title={isSpeaking ? "Stop" : "Read aloud"}
+            onClick={toggle}
+            className={cn(
+              "relative ml-auto flex items-center justify-center w-7 h-7 rounded-md border transition-colors",
+              isSpeaking
+                ? "border-primary/60 bg-primary/15 text-primary"
+                : "border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/40",
+            )}
+          >
+            {isSpeaking ? (
+              <Square className="w-3 h-3" />
+            ) : (
+              <Volume2 className="w-3.5 h-3.5" />
+            )}
+            {isSpeaking && (
+              <span className="absolute inset-0 rounded-md border border-primary/40 animate-ping pointer-events-none" />
+            )}
+          </button>
+        )}
+      </div>
+      <p className="text-sm md:text-[15px] text-muted-foreground leading-relaxed whitespace-pre-line">
+        {text}
+      </p>
+    </motion.section>
+  );
+}
 
 function ReportSection({
   icon,
@@ -146,15 +236,23 @@ export function VerdictReport({
 
           {/* Sections */}
           <div className="mt-6 space-y-4">
-            {sections.map((s, i) => (
-              <ReportSection
-                key={s.label}
-                icon={sectionIcons[s.label]}
-                label={s.label}
-                text={s.text}
-                index={i}
-              />
-            ))}
+            {sections.map((s, i) =>
+              s.label === "Relative Comparison" ? (
+                <RelativeComparisonSection
+                  key={s.label}
+                  text={s.text}
+                  index={i}
+                />
+              ) : (
+                <ReportSection
+                  key={s.label}
+                  icon={sectionIcons[s.label]}
+                  label={s.label}
+                  text={s.text}
+                  index={i}
+                />
+              ),
+            )}
           </div>
 
           {/* Verdict reason */}

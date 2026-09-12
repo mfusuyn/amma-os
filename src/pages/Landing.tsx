@@ -335,6 +335,10 @@ export default function Landing() {
   };
 
   const runJudgment = async (submission: Parameters<typeof submitToAmma>[0]) => {
+    // Clear the previous judgment immediately: during loading only the loading
+    // state shows, and the incoming result fully replaces the old one.
+    // (Also stops any ongoing speech via VerdictReport's unmount cleanup.)
+    setJudgment(null);
     setIsSubmitting(true);
     setView("loading");
     try {
